@@ -139,8 +139,14 @@ def run_steady(writer, scenario, h3, sender_hosts):
         )
     time.sleep(1)  # let TCP handshake complete before sampling
 
-    end_time = time.time() + scenario["duration"]
-    while time.time() < end_time:
+    # Step-counted rather than wall-clock-deadline-based: if the
+    # machine suspends/sleeps mid-run, time.time() jumps forward on
+    # resume and a "while time.time() < end_time" check would read as
+    # already-expired, silently truncating the whole scenario to
+    # whatever ran before the sleep. Counting iterations is immune to
+    # that -- it just resumes wherever it left off.
+    num_steps = max(1, round(scenario["duration"] / SAMPLE_INTERVAL))
+    for _ in range(num_steps):
         sample_hosts(writer, scenario["name"], sender_hosts)
         time.sleep(SAMPLE_INTERVAL)
 
@@ -151,9 +157,12 @@ def run_steady(writer, scenario, h3, sender_hosts):
 def run_bursty(writer, scenario, h3, sender_hosts):
     burst_on = 5
     burst_off = 3
-    end_time = time.time() + scenario["duration"]
+    burst_on_steps = max(1, round(burst_on / SAMPLE_INTERVAL))
+    burst_off_steps = max(1, round(burst_off / SAMPLE_INTERVAL))
+    total_steps = max(1, round(scenario["duration"] / SAMPLE_INTERVAL))
 
-    while time.time() < end_time:
+    step = 0
+    while step < total_steps:
         for h in sender_hosts:
             h.cmd("pkill -9 -f 'iperf3 -c'")
             set_uplink_bw(h, scenario["uplink_bw_mbps"])
@@ -164,18 +173,22 @@ def run_bursty(writer, scenario, h3, sender_hosts):
             )
         time.sleep(0.5)
 
-        burst_end = time.time() + burst_on
-        while time.time() < burst_end and time.time() < end_time:
+        for _ in range(burst_on_steps):
+            if step >= total_steps:
+                break
             sample_hosts(writer, scenario["name"], sender_hosts)
             time.sleep(SAMPLE_INTERVAL)
+            step += 1
 
         for h in sender_hosts:
             h.cmd("pkill -9 -f 'iperf3 -c'")
 
-        gap_end = time.time() + burst_off
-        while time.time() < gap_end and time.time() < end_time:
+        for _ in range(burst_off_steps):
+            if step >= total_steps:
+                break
             sample_hosts(writer, scenario["name"], sender_hosts)
             time.sleep(SAMPLE_INTERVAL)
+            step += 1
 
 
 def main():

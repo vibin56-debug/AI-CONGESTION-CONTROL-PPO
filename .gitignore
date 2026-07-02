@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+
+# Generated/regenerable datasets -- not a dependency of the RL
+# pipeline (train_real.py trains live against Mininet, not from this
+# CSV). Regenerate locally with scripts/collect_dataset.py.
+data/raw/*.csv
+data/processed/*.csv
+
+# iperf3/tc scratch logs written by collect_dataset.py / real_congestion_env.py
+/tmp/iperf_*.log
+/tmp/real_env_client.log

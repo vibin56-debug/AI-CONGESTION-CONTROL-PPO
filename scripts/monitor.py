@@ -8,7 +8,11 @@ from datetime import datetime
 # CHANGE THIS IF h2 PID CHANGES
 PID = 1614
 
-CSV_FILE = "../data/raw/network_metrics.csv"
+# Anchored to this script's own location rather than a relative path,
+# so it always resolves to <project_root>/data/raw/... regardless of
+# which directory this is launched from.
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CSV_FILE = os.path.join(_PROJECT_ROOT, "data", "raw", "network_metrics.csv")
 
 # mnexec needs root to attach to another process's network namespace.
 # Run this script itself with `sudo python3 monitor.py` -- if it isn't

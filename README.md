@@ -64,10 +64,12 @@ cd ~/AI_Congestion_Control
 sudo python3 <script>
 ```
 
-- Collect a labeled dataset: `sudo python3 scripts/collect_dataset.py`
-  (writes `data/raw/network_metrics.csv`; current scenario durations are set
-  for a quick smoke test -- raise `SAMPLE_INTERVAL`/`duration` in the file
-  for a full-scale collection, see the comment at the bottom of the file)
+- Collect a labeled dataset: `sudo python3 scripts/collect_dataset.py` (writes
+  `data/raw/network_metrics.csv`; can be launched from either the project
+  root or `scripts/` -- the output path is anchored to the script's own
+  location, not the working directory). Current settings (`SAMPLE_INTERVAL
+  = 0.1`, `duration = 1500` per scenario) target the plan's ~100k-sample
+  goal and take ~100 minutes; drop to `0.5`/`30` for a quick smoke test.
 - Train on the live network: `sudo python3 rl/train_real.py` (~25-30 min)
 - Compare agent vs Cubic (1 episode each): `sudo python3 rl/evaluate_real.py`
 - Compare agent vs Cubic (5 trials, with stats): `sudo python3 rl/evaluate_multi_trial.py`
@@ -90,6 +92,18 @@ delay -- more trials would tighten the RTT confidence interval.
 Plots: `results/throughput_vs_time.png`, `results/rtt_vs_time.png`,
 `results/summary_comparison.png`, `results/training_reward_curve.png`.
 
+## Dataset
+
+`data/raw/network_metrics.csv` (not committed -- regenerable, see
+`.gitignore`) currently holds ~82k real samples across the four scenarios:
+
+| Scenario | Rows | Avg RTT | Avg Throughput | Avg Loss |
+|---|---|---|---|---|
+| baseline_low | 14,742 | 64.3ms | 1.91Mbps | 0.00% |
+| medium_load | 29,082 (h1+h2) | ~1710ms | ~4.64Mbps/flow | ~2.5% |
+| high_load | 28,920 (h1+h2) | ~1730ms | ~4.64Mbps/flow | ~3.5% |
+| bursty | 9,391 | 226.3ms | 9.56Mbps | 0.00% |
+
 ## Known limitations / notes for anyone continuing this
 
 - iperf3's own `-b` bitrate flag is not reliably enforced in this
@@ -106,8 +120,8 @@ Plots: `results/throughput_vs_time.png`, `results/rtt_vs_time.png`,
 - `sudo -n` / any non-interactive `sudo` will not work in this setup (no
   cached credentials, no NOPASSWD rule); everything must be run from an
   interactive terminal where the password can be typed once per session.
-- The full ~100k-sample dataset target from the original plan has not been
-  collected yet -- `scripts/collect_dataset.py` is validated end-to-end but
-  currently runs at smoke-test scale (30s/scenario). Bumping
-  `SAMPLE_INTERVAL` to 0.1 and scenario `duration` to ~900s gets close to
-  that target in under an hour (see the comment at the bottom of the file).
+- `collect_dataset.py`'s per-scenario loops are step-counted, not
+  wall-clock-deadline-based -- a `while time.time() < end_time` loop
+  silently truncates if the machine suspends/sleeps mid-run (`time.time()`
+  jumps forward on resume, reading as already-expired). Keep the machine on
+  AC power with sleep disabled for any long unattended run regardless.

@@ -15,7 +15,13 @@ if os.geteuid() != 0:
         "collect_dataset.py must be run as root, e.g.: sudo python3 collect_dataset.py"
     )
 
-CSV_FILE = "../data/raw/network_metrics.csv"
+# Anchored to this script's own location rather than a relative path,
+# so it always resolves to <project_root>/data/raw/... regardless of
+# whether this is launched from the project root or from scripts/
+# (a relative "../data/..." silently wrote outside the project
+# entirely when run from the wrong directory).
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CSV_FILE = os.path.join(_PROJECT_ROOT, "data", "raw", "network_metrics.csv")
 
 # How often to sample each active sender (seconds). Matches the
 # project plan's ~100ms sampling target.
